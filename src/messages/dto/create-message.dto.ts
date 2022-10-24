@@ -6,5 +6,5 @@ export class CreateMessageDto {
   upload_outgoing_params: boolean;
   get_context: boolean;
   analyze: boolean;
-  slots_to_load: string[];
+  parameters: string[];
 }

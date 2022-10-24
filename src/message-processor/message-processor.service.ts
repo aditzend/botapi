@@ -1,30 +1,44 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import { CreateMessageDto } from 'src/messages/dto/create-message.dto';
 import { ResponseCreateMessageDto } from 'src/messages/dto/response-create-message.dto';
 import ParametersService from 'src/parameters/parameters.service';
-import { SendJobDto } from 'src/rabbitmq/dto/send-job.dto';
-import { RabbitmqService } from 'src/rabbitmq/rabbitmq.service';
 import { RasaRequest } from 'src/rasa/interfaces/rasa.interface';
 import { RasaService } from 'src/rasa/rasa.service';
+import { ClientProxy } from '@nestjs/microservices';
+import parseParams from 'src/helpers/param-resolver';
+import { JobMessageDto } from 'src/messages/dto/job-message.dto';
 
 @Injectable()
 export class MessageProcessorService {
   constructor(
+    @Inject('ANALYTICS_SERVICE') private client: ClientProxy,
     private readonly rasa: RasaService,
-    private readonly rabbitmq: RabbitmqService,
     private readonly parameters: ParametersService,
   ) {}
 
   logger: Logger = new Logger('MessageProcessorService');
 
+  sendJob(job: JobMessageDto) {
+    this.logger.debug({ job }, 'Job');
+    this.client.emit(
+      {
+        group: job.parameters?.analytics_group || 'conversations',
+        sent_by: 'bot-api',
+        to_processor: job.parameters?.analytics_processor || 'T1',
+      },
+      job,
+    );
+  }
+
   async create(createMessageDto: CreateMessageDto) {
+    const params = parseParams(createMessageDto.parameters);
     const events: object[] = [];
     let context: any;
     let recursiveMessage: string = createMessageDto.message;
     let command = '';
     let cutCondition = false;
-    let pushed_to_analytics_queue = false;
+    let pushed_to_analytics_queue;
     let outgoing_params_uploaded = false;
     while (cutCondition === false) {
       this.logger.verbose({ events }, 'Events');
@@ -88,20 +102,17 @@ export class MessageProcessorService {
 
     // Send job to ETL queue if analyze is true
     if (createMessageDto.analyze === true) {
-      const job: SendJobDto = {
-        queueName: `${createMessageDto.bot_name}_etl`,
-        data: {
-          interaction_id: createMessageDto.sender,
-          bot_name: createMessageDto.bot_name,
-          message: createMessageDto.message,
-          events,
-          context,
-          channel: createMessageDto.channel,
-          sentAt: new Date().toISOString(),
-        },
+      const job: JobMessageDto = {
+        recipient_id: createMessageDto.sender,
+        bot_name: createMessageDto.bot_name,
+        client_message: createMessageDto.message,
+        bot_responses: events,
+        context,
+        channel: createMessageDto.channel,
+        sent_at: new Date().toISOString(),
+        parameters: params,
       };
-      this.rabbitmq.sendJob(job);
-      pushed_to_analytics_queue = true;
+      this.sendJob(job);
     }
 
     if (createMessageDto.upload_outgoing_params === true) {

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MessageProcessorService } from 'src/message-processor/message-processor';
+import { MessageProcessorService } from 'src/message-processor/message-processor.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 
 @Injectable()
