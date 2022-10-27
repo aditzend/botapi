@@ -12,7 +12,7 @@ import { JobMessageDto } from 'src/messages/dto/job-message.dto';
 @Injectable()
 export class MessageProcessorService {
   constructor(
-    @Inject('ANALYTICS_SERVICE') private client: ClientProxy,
+    @Inject('ANALYTICS_SERVICE') private analyticsService: ClientProxy,
     private readonly rasa: RasaService,
     private readonly parameters: ParametersService,
   ) {}
@@ -20,8 +20,7 @@ export class MessageProcessorService {
   logger: Logger = new Logger('MessageProcessorService');
 
   sendJob(job: JobMessageDto) {
-    this.logger.debug({ job }, 'Job');
-    this.client.emit(
+    this.analyticsService.emit(
       {
         group: job.parameters?.analytics_group || 'conversations',
         sent_by: 'bot-api',
@@ -29,6 +28,7 @@ export class MessageProcessorService {
       },
       job,
     );
+    this.logger.debug(`Job sent to analytics queue`);
   }
 
   async create(createMessageDto: CreateMessageDto) {

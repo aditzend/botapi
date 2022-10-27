@@ -5,28 +5,27 @@ import { HttpModule } from '@nestjs/axios';
 import { RasaService } from 'src/rasa/rasa.service';
 import { MessageProcessorService } from 'src/message-processor/message-processor.service';
 import ParametersService from 'src/parameters/parameters.service';
-import { ClientsModule, Transport } from '@nestjs/microservices';
+import {
+  ClientOptions,
+  ClientProxyFactory,
+  ClientsModule,
+  Transport,
+  RmqOptions,
+} from '@nestjs/microservices';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
-  imports: [
-    HttpModule,
-    ClientsModule.register([
-      {
-        name: 'ANALYTICS_SERVICE',
-        transport: Transport.RMQ,
-        options: {
-          urls: [process.env.RABBITMQ_URL || 'amqp://192.168.43.169:30072/dev'],
-          queue: process.env.ANALYTICS_QUEUE || 'analytics',
-          noAck: false,
-          queueOptions: {
-            durable: true,
-          },
-        },
-      },
-    ]),
-  ],
+  imports: [HttpModule],
   controllers: [MessagesController],
   providers: [
+    {
+      provide: 'ANALYTICS_SERVICE',
+      useFactory: (configService: ConfigService) => {
+        const devServiceOptions: RmqOptions = configService.get('rabbitmq');
+        return ClientProxyFactory.create(devServiceOptions);
+      },
+      inject: [ConfigService],
+    },
     MessagesService,
     RasaService,
     MessageProcessorService,
