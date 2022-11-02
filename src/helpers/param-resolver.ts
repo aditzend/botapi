@@ -2,7 +2,7 @@
 
 export default function parseParams(params) {
   const result = {};
-  params.forEach((param) => {
+  params?.forEach((param) => {
     const [key, value] = param.split('=');
     result[key] = value;
   });
