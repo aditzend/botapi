@@ -7,5 +7,6 @@ export class ResponseCreateMessageDto {
   status: {
     pushed_to_analytics_queue: boolean;
     outgoing_params_uploaded: boolean;
+    initial_slots_loaded: boolean;
   };
 }

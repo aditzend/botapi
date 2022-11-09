@@ -7,10 +7,13 @@ export class MessagesService {
   constructor(private readonly messageProcessor: MessageProcessorService) {}
 
   logger: Logger = new Logger('MessagesService');
+
+  /**
+   * Sends a message to Rasa and returns the response
+   * @param createMessageDto
+   * @returns
+   */
   create(createMessageDto: CreateMessageDto) {
-    const slotLoadResponse = this.messageProcessor.loadSlots(createMessageDto);
-    const rasaResponse = this.messageProcessor.create(createMessageDto);
-    this.logger.debug(JSON.stringify(rasaResponse));
-    return rasaResponse;
+    return this.messageProcessor.create(createMessageDto);
   }
 }

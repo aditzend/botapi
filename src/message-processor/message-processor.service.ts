@@ -9,13 +9,14 @@ import { ClientProxy } from '@nestjs/microservices';
 // import parseParams from 'src/helpers/param-resolver';
 import { JobMessageDto } from 'src/messages/dto/job-message.dto';
 import { Slot } from 'src/messages/entities/slot.entity';
+import { LoadSlotsDto } from 'src/messages/dto/load-slots.dto';
 
 @Injectable()
 export class MessageProcessorService {
   constructor(
     @Inject('ANALYTICS_SERVICE') private analyticsService: ClientProxy,
-    private readonly rasa: RasaService,
-    private readonly parameters: ParametersService,
+    private readonly rasaService: RasaService,
+    private readonly parametersService: ParametersService,
   ) {}
 
   logger: Logger = new Logger('MessageProcessorService');
@@ -26,12 +27,24 @@ export class MessageProcessorService {
    * @param {string} bot_name
    * @param {Slot[]} slots
    */
-  async loadSlots({ load_slots, bot_name, sender }: CreateMessageDto) {
-    for (const slot of load_slots) {
-      this.rasa.loadSlot(sender, bot_name, slot),
-        this.logger.debug(
-          `Slot ${slot.slot_name} loaded with value ${slot.slot_value}, `,
-        );
+  async loadSlots(loadSlotsDto: LoadSlotsDto) {
+    for (const slot of loadSlotsDto.load_slots) {
+      this.logger.verbose(
+        `Loading slot ${slot.slot_name} with value ${slot.slot_value}`,
+      );
+
+      const loadSlotResponse = await firstValueFrom(
+        this.rasaService.loadSlot({
+          sender: loadSlotsDto.sender,
+          bot_name: loadSlotsDto.bot_name,
+          slot,
+        }),
+      );
+      this.logger.debug(
+        `Slot "${slot.slot_name}" loaded to ${
+          loadSlotsDto.sender
+        } with value: "${loadSlotResponse.slots[slot.slot_name]}" `,
+      );
     }
   }
 
@@ -65,23 +78,29 @@ export class MessageProcessorService {
     let cutCondition = false;
     let pushed_to_analytics_queue;
     let outgoing_params_uploaded = false;
+    let initial_slots_loaded = false;
+
+    // Load slots
+    if (createMessageDto.load_slots) {
+      await this.loadSlots({
+        sender: createMessageDto.sender,
+        bot_name: createMessageDto.bot_name,
+        load_slots: createMessageDto.load_slots,
+      });
+      initial_slots_loaded = true;
+    }
     while (cutCondition === false) {
-      this.logger.verbose({ events }, 'Events');
       const rasaRequest: RasaRequest = {
         sender: createMessageDto.sender,
         message: recursiveMessage,
         bot_name: createMessageDto.bot_name,
       };
-      this.logger.debug(
-        `Preparing Rasa Request ${JSON.stringify(rasaRequest)}`,
-      );
       const rasaResponses = await firstValueFrom(
-        this.rasa.sendMessage(rasaRequest),
+        this.rasaService.sendMessage(rasaRequest),
       );
-      this.logger.verbose({ rasaResponses }, 'Rasa Responses');
       if (recursiveMessage === createMessageDto.message) {
         context = await firstValueFrom(
-          this.rasa.getMessageContext(rasaRequest),
+          this.rasaService.getMessageContext(rasaRequest),
         );
       }
 
@@ -90,7 +109,6 @@ export class MessageProcessorService {
         cutCondition = true;
         this.logger.error({ rasaResponses }, 'Rasa responses is empty');
       } else {
-        this.logger.verbose({ rasaResponses }, 'Rasa Responsesa are not empty');
         for (const event of rasaResponses) {
           if (event.text.includes('>>>')) {
             [command, recursiveMessage] = event.text.split('>>>');
@@ -147,7 +165,7 @@ export class MessageProcessorService {
     }
 
     if (createMessageDto.upload_outgoing_params === true) {
-      this.parameters.uploadPrefixedSlots(context.slots);
+      this.parametersService.uploadPrefixedSlots(context.slots);
       outgoing_params_uploaded = true;
     }
 
@@ -162,6 +180,7 @@ export class MessageProcessorService {
       status: {
         pushed_to_analytics_queue,
         outgoing_params_uploaded,
+        initial_slots_loaded,
       },
     };
     return responseCreateMessageDto;
