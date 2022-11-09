@@ -8,6 +8,7 @@ export class MessagesService {
 
   logger: Logger = new Logger('MessagesService');
   create(createMessageDto: CreateMessageDto) {
+    const slotLoadResponse = this.messageProcessor.loadSlots(createMessageDto);
     const rasaResponse = this.messageProcessor.create(createMessageDto);
     this.logger.debug(JSON.stringify(rasaResponse));
     return rasaResponse;

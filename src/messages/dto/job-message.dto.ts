@@ -5,9 +5,9 @@ export class JobMessageDto {
   bot_responses: object[];
   channel: string;
   context?: object;
-  sent_at: string;
-  parameters: {
-    analytics_processor?: string;
-    analytics_group?: string;
+  sent_at: Date;
+  analytics?: {
+    processor?: string;
+    group?: string;
   };
 }
