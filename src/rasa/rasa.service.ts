@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { map } from 'rxjs';
 import { LoadSingleSlotDto } from 'src/messages/dto/load-single-slot.dto';
+import { CreateRasaMessageDto } from './interfaces/createRasaMessage.dto';
 import { RasaRequest } from './interfaces/rasa.interface';
 
 @Injectable()
@@ -38,14 +39,18 @@ export class RasaService {
       .pipe(map((response) => response.data));
   }
 
-  sendMessage(payload: RasaRequest) {
-    const url = this.getBotHost(payload.bot_name);
+  sendMessage(createRasaMessageDto: CreateRasaMessageDto) {
+    const url = this.getBotHost(createRasaMessageDto.bot_name);
     const endpoint = `${url}/webhooks/rest/webhook`;
     this.logger.verbose(
-      `Posting to ${endpoint} with payload ${JSON.stringify(payload)}`,
+      `Posting message "${
+        createRasaMessageDto.message
+      }" to ${endpoint} with RasaRequest:  ${JSON.stringify(
+        createRasaMessageDto,
+      )}`,
     );
     return this.http
-      .post(endpoint, payload)
+      .post(endpoint, createRasaMessageDto)
       .pipe(map((response) => response.data));
   }
 
@@ -70,6 +75,26 @@ export class RasaService {
           };
         }),
       );
+  }
+
+  getLatestResponse(sender: string, bot_name: string) {
+    const url = this.getBotHost(bot_name);
+    const endpoint = `${url}/conversations/${sender}/tracker`;
+    return (
+      this.http
+        .get(endpoint)
+        .pipe(map((response) => response.data))
+        // Filter the events array where the event is 'bot'
+        .pipe(
+          map((tracker) =>
+            tracker.events.filter((event) => event.event === 'bot'),
+          ),
+        )
+        // Get the last element of the filtered array
+        .pipe(map((events) => events[events.length - 1]))
+        // Get the text of the last element
+        .pipe(map((event) => event.text))
+    );
   }
 
   getHello(): string {
