@@ -4,6 +4,6 @@ import { Controller, Get } from '@nestjs/common';
 export class AppController {
   @Get('version')
   getVersion(): string {
-    return '1.0.4';
+    return 'slots-after';
   }
 }

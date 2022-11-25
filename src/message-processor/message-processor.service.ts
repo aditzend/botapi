@@ -141,6 +141,8 @@ export class MessageProcessorService {
       });
       initial_slots_loaded = true;
     }
+
+    // MESSAGE RECURSION
     while (cutCondition === false) {
       const rasaRequest: RasaRequest = {
         sender: createMessageDto.sender,
@@ -150,11 +152,11 @@ export class MessageProcessorService {
       const rasaResponses = await firstValueFrom(
         this.rasaService.sendMessage(rasaRequest),
       );
-      if (recursiveMessage === createMessageDto.message) {
-        context = await firstValueFrom(
-          this.rasaService.getMessageContext(rasaRequest),
-        );
-      }
+      // if (recursiveMessage === createMessageDto.message) {
+      context = await firstValueFrom(
+        this.rasaService.getMessageContext(rasaRequest),
+      );
+      // }
 
       // Check that there actually are events present
       if (rasaResponses.length < 1) {
@@ -201,6 +203,7 @@ export class MessageProcessorService {
         }
       }
     }
+    // END MESSAGE RECURSION
 
     // Send job to ETL queue if analyze is true
     if (createMessageDto.analyze === true) {
