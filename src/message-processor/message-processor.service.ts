@@ -10,6 +10,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { JobMessageDto } from 'src/messages/dto/job-message.dto';
 import { Slot } from 'src/messages/entities/slot.entity';
 import { LoadSlotsDto } from 'src/messages/dto/load-slots.dto';
+import { NoResponseMessageDto } from 'src/messages/dto/no-response-message.dto';
 
 @Injectable()
 export class MessageProcessorService {
@@ -33,6 +34,11 @@ export class MessageProcessorService {
         `Loading slot ${slot.slot_name} with value ${slot.slot_value}`,
       );
 
+      // this.rasaService.loadSlot({
+      //   sender: loadSlotsDto.sender,
+      //   bot_name: loadSlotsDto.bot_name,
+      //   slot,
+      // });
       const loadSlotResponse = await firstValueFrom(
         this.rasaService.loadSlot({
           sender: loadSlotsDto.sender,
@@ -40,6 +46,7 @@ export class MessageProcessorService {
           slot,
         }),
       );
+      this.logger.error(JSON.stringify(loadSlotResponse));
       this.logger.debug(
         `Slot "${slot.slot_name}" loaded to ${
           loadSlotsDto.sender
@@ -63,6 +70,51 @@ export class MessageProcessorService {
       job,
     );
     this.logger.debug(`Job sent to analytics queue`);
+  }
+
+  /**
+   * Returns a response to the user indicating that there is no audio
+   * @param {createMessageDto} CreateMessageDto
+   * @returns {ResponseCreateMessageDto} Result of noresponse
+   */
+  async noResponse(createMessageDto: CreateMessageDto) {
+    this.logger.warn(`No response to ${createMessageDto.sender}`);
+    // const latestResponse = await this.rasaService.getLatestResponse(
+    //   createMessageDto.sender,
+    //   createMessageDto.bot_name,
+    // );
+    const events: object[] = [
+      {
+        message:
+          'Perdón, no puedo oír bien. ¿Puede repetirlo una vez más si es tan amable por favor?',
+        event_name: '*text',
+      },
+    ];
+
+    const job: JobMessageDto = {
+      recipient_id: createMessageDto.sender,
+      bot_name: createMessageDto.bot_name,
+      client_message: createMessageDto.message,
+      bot_responses: events,
+      context: {},
+      channel: createMessageDto.channel,
+      sent_at: new Date(),
+    };
+    this.sendJob(job);
+
+    const responseCreateMessageDto: ResponseCreateMessageDto = {
+      recipient_id: createMessageDto.sender,
+      bot_name: createMessageDto.bot_name,
+      channel: createMessageDto.channel,
+      events: events,
+      context: { context_requested: false },
+      status: {
+        pushed_to_analytics_queue: false,
+        outgoing_params_uploaded: false,
+        initial_slots_loaded: false,
+      },
+    };
+    return responseCreateMessageDto;
   }
 
   /**

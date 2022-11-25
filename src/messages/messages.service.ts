@@ -8,6 +8,10 @@ export class MessagesService {
 
   logger: Logger = new Logger('MessagesService');
 
+  noResponse(createMessageDto: CreateMessageDto) {
+    return this.messageProcessor.noResponse(createMessageDto);
+  }
+
   /**
    * Sends a message to Rasa and returns the response
    * @param createMessageDto

@@ -15,7 +15,7 @@ export class RasaService {
    * Does the actual HTTP Post against tracker endpoint to load a slot
    * @param sender
    * @param bot_name
-   * @param slot
+   * @param slot : {slot_name: string, slot_value: string}
    * @returns
    */
   loadSlot(loadSingleSlotDto: LoadSingleSlotDto) {
@@ -24,6 +24,7 @@ export class RasaService {
     );
     const url = this.getBotHost(loadSingleSlotDto.bot_name);
     const trackerEndpoint = `${url}/conversations/${loadSingleSlotDto.sender}/tracker/events?include_events=NONE`;
+    this.logger.verbose(`Tracker endpoint: ${trackerEndpoint}`);
     const slotToLoad = {
       event: 'slot',
       name: loadSingleSlotDto.slot.slot_name,
