@@ -5,7 +5,7 @@ const logger: Logger = new Logger('BotHost');
 export default function getBotHost(botName: string): string {
   const botEnv = process.env.BOT_ENV || 'production';
   const protocol = process.env.BOT_PROTOCOL || 'http';
-  const stackName = botName?.toLowerCase();
+  const [stackName, campaign, lang] = botName?.toLowerCase().split('---');
   const serviceName = process.env.PRODUCTION_RASA_SERVICE_NAME || 'rasa';
   const servicePort = process.env.PRODUCTION_RASA_PORT || '5005';
   const devUrl: string = process.env.BOT_DEV_URL || 'http://localhost:5005';
