@@ -91,12 +91,26 @@ export class MessageProcessorService {
       },
     ];
 
+    const { language } = this.rasaService.extractBotData(
+      createMessageDto.bot_name,
+    );
+    const contextRequest: RasaRequest = {
+      sender: createMessageDto.sender,
+      message: '',
+      botName: createMessageDto.bot_name,
+      customData: { language },
+    };
+
+    const context = await firstValueFrom(
+      this.rasaService.getMessageContext(contextRequest),
+    );
+
     const job: JobMessageDto = {
       recipient_id: createMessageDto.sender,
       bot_name: createMessageDto.bot_name,
       client_message: createMessageDto.message,
       bot_responses: events,
-      context: {},
+      context,
       channel: createMessageDto.channel,
       sent_at: new Date(),
     };
@@ -107,7 +121,7 @@ export class MessageProcessorService {
       bot_name: createMessageDto.bot_name,
       channel: createMessageDto.channel,
       events: events,
-      context: { context_requested: false },
+      context,
       status: {
         pushed_to_analytics_queue: false,
         outgoing_params_uploaded: false,
@@ -131,6 +145,9 @@ export class MessageProcessorService {
     let pushed_to_analytics_queue;
     let outgoing_params_uploaded = false;
     let initial_slots_loaded = false;
+    const { language } = this.rasaService.extractBotData(
+      createMessageDto.bot_name,
+    );
 
     // Load slots
     if (createMessageDto.load_slots) {
@@ -147,7 +164,8 @@ export class MessageProcessorService {
       const rasaRequest: RasaRequest = {
         sender: createMessageDto.sender,
         message: recursiveMessage,
-        bot_name: createMessageDto.bot_name,
+        botName: createMessageDto.bot_name,
+        customData: { language },
       };
       const rasaResponses = await firstValueFrom(
         this.rasaService.sendMessage(rasaRequest),

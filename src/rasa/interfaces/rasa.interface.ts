@@ -1,7 +1,10 @@
 export interface RasaRequest {
   sender: string;
   message: string;
-  bot_name: string;
+  botName: string;
+  customData?: {
+    language?: string;
+  };
 }
 
 export interface RasaResponse {

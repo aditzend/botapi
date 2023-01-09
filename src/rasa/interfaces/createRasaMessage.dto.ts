@@ -8,5 +8,9 @@ export class CreateRasaMessageDto {
   message: string;
 
   @IsNotEmpty()
-  bot_name: string;
+  botName: string;
+
+  customData?: {
+    language?: string;
+  };
 }

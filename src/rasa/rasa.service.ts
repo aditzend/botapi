@@ -22,7 +22,7 @@ export class RasaService {
     this.logger.verbose(
       `Loading slot ${loadSingleSlotDto.slot.slot_name} with value ${loadSingleSlotDto.slot.slot_value}`,
     );
-    const url = this.getBotHost(loadSingleSlotDto.bot_name);
+    const { url } = this.extractBotData(loadSingleSlotDto.bot_name);
     const trackerEndpoint = `${url}/conversations/${loadSingleSlotDto.sender}/tracker/events?include_events=NONE`;
     this.logger.verbose(`Tracker endpoint: ${trackerEndpoint}`);
     const slotToLoad = {
@@ -41,7 +41,7 @@ export class RasaService {
   }
 
   sendMessage(createRasaMessageDto: CreateRasaMessageDto) {
-    const url = this.getBotHost(createRasaMessageDto.bot_name);
+    const { url, language } = this.extractBotData(createRasaMessageDto.botName);
     const endpoint = `${url}/webhooks/rest/webhook`;
     this.logger.verbose(
       `Posting message "${
@@ -56,7 +56,7 @@ export class RasaService {
   }
 
   getMessageContext(payload: RasaRequest) {
-    const url = this.getBotHost(payload.bot_name);
+    const { url, pilotID, language } = this.extractBotData(payload.botName);
     const endpoint = `${url}/conversations/${payload.sender}/tracker`;
     return this.http
       .get(endpoint)
@@ -79,7 +79,7 @@ export class RasaService {
   }
 
   getLatestResponse(sender: string, bot_name: string) {
-    const url = this.getBotHost(bot_name);
+    const { url, pilotID, language } = this.extractBotData(bot_name);
     const endpoint = `${url}/conversations/${sender}/tracker`;
     return (
       this.http
@@ -102,20 +102,32 @@ export class RasaService {
     return 'Hello World!';
   }
 
-  getBotHost(botName: string): string {
+  extractBotData(botName: string): {
+    url: string;
+    pilotID: string;
+    language: string;
+  } {
     const botEnv = process.env.BOT_ENV || 'production';
     const protocol = process.env.BOT_PROTOCOL || 'http';
-    const stackName = botName?.toLowerCase();
+    // Split the string by a number regex, one or more digits are allowed
+    const [stackName, pilotID, language] = botName
+      ?.toLowerCase()
+      .split(/(\d+)/);
     const serviceName = process.env.PRODUCTION_RASA_SERVICE_NAME || 'rasa';
     const servicePort = process.env.PRODUCTION_RASA_PORT || '5005';
     const devUrl: string = process.env.BOT_DEV_URL || 'http://localhost:5005';
     const productionUrl = `${protocol}://${stackName}_${serviceName}:${servicePort}`;
+    this.logger.verbose(`BotHost: ${stackName} :  ${pilotID} : ${language}`);
 
     try {
       if (botEnv === 'development') {
-        return devUrl;
+        return { url: devUrl, pilotID, language };
       }
-      return productionUrl;
+      return {
+        url: productionUrl,
+        pilotID,
+        language,
+      };
     } catch (error) {
       this.logger.error(error);
       return error;
