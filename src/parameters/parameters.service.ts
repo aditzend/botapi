@@ -1,6 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
-import { OutgoingTaskParam } from './dto/outgoing-task-param';
+import { CreateOutgoingTaskParamDto } from './dto/create-outgoing-task-param.dto';
 import { Logger } from '@nestjs/common';
 
 @Injectable()
@@ -9,7 +9,7 @@ export default class ParametersService {
 
   logger: Logger = new Logger('ParametersService');
 
-  dbApiUrl = process.env.DBAPI_URL || 'http://localhost:3000';
+  dbApiUrl = process.env.DBAPI_URL || 'http://localhost:4000';
 
   uploadPrefixedSlots(slots: object) {
     const taskId = slots['idTarea'];
@@ -22,17 +22,19 @@ export default class ParametersService {
     outgoingSlotKeys.forEach((slot) => {
       this.logger.debug({ taskId, slot, value: slots[slot] }, 'Outgoing slot');
       this.updateOrCreateOutgoingTaskParams({
-        idTarea: taskId,
-        NombreParametro: slot,
-        Valor: slots[slot],
+        task_id: taskId,
+        key: slot,
+        value: slots[slot],
       });
     });
   }
 
-  updateOrCreateOutgoingTaskParams(uploadParam: OutgoingTaskParam) {
+  updateOrCreateOutgoingTaskParams(
+    createOutgoingTaskParamDto: CreateOutgoingTaskParamDto,
+  ) {
     return this.http.post(
-      `${this.dbApiUrl}/outgoing_task_params/update_or_create/`,
-      uploadParam,
+      `${this.dbApiUrl}/v3/parameters/outgoing`,
+      createOutgoingTaskParamDto,
     );
   }
 }
